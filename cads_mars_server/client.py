@@ -65,8 +65,9 @@ class ClientError(Exception):
 
 
 class RemoteMarsClientSession:
-    def __init__(self, url, request, environ, target, timeout=60, log=LOG):
+    def __init__(self, url, verb, request, environ, target, timeout=60, log=LOG):
         self.url = url
+        self.verb = verb
         self.request = request
         self.environ = environ
         self.target = target
@@ -118,7 +119,7 @@ class RemoteMarsClientSession:
         )
 
     def execute(self):
-        self.log.info(f"Calling {self.url} {self.request} {self.environ}")
+        self.log.info(f"Calling {self.url} {self.verb} {self.request} {self.environ}")
 
         error = None
 
@@ -127,6 +128,7 @@ class RemoteMarsClientSession:
             r = requests.post(
                 self.url,
                 json=dict(
+                    verb=self.verb,
                     request=self.request,
                     environ=self.environ,
                 ),
@@ -233,9 +235,10 @@ class RemoteMarsClient:
         self.timeout = timeout
         self.log = log
 
-    def execute(self, request, environ, target):
+    def execute(self, verb, request, environ, target):
         session = RemoteMarsClientSession(
             self.url,
+            verb,
             request,
             environ,
             target,
@@ -267,7 +270,7 @@ class RemoteMarsClientCluster:
         self.timeout = timeout
         self.log = log
 
-    def execute(self, request, environ, target):
+    def execute(self, request, environ, target, verb="RETRIEVE"):
         random.shuffle(self.urls)
         saved = setproctitle.getproctitle()
         request_id = environ.get("request_id", "unknown")
@@ -285,7 +288,7 @@ class RemoteMarsClientCluster:
                     log=self.log,
                 )
 
-                reply = client.execute(request, environ, target)
+                reply = client.execute(verb, request, environ, target)
                 if not reply.error:
                     return reply
 

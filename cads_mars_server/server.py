@@ -68,7 +68,10 @@ def tidy(data):
     return '"{0}"'.format(data)
 
 
-def mars(*, mars_executable, request, uid, logdir, environ):
+def mars(verb, mars_executable, request, uid, logdir, environ):
+    verb = verb.upper()
+    assert verb in {"RETRIEVE", "LIST"}
+
     if isinstance(request, dict):
         requests = [request]
     else:
@@ -93,7 +96,7 @@ def mars(*, mars_executable, request, uid, logdir, environ):
             assert os.write(request_pipe_w, text) == len(text)
 
         for request in requests:
-            out("RETRIEVE,\n")
+            out("{},\n".format(verb))
             for key, value in request.items():
                 out("{0}={1},\n".format(key, tidy(value)))
 
@@ -150,10 +153,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         length = int(self.headers["content-length"])
         data = json.loads(self.rfile.read(length))
 
+        verb = data.get("verb", "RETRIEVE")
         request = data["request"]
         environ = data["environ"]
 
-        LOG.info("POST %s %s", request, environ)
+        LOG.info("POST %s %s %s", verb, request, environ)
 
         uid = environ.get("request_id")
         if uid is None:
@@ -162,6 +166,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         setproctitle.setproctitle(f"cads_mars_server {uid}")
 
         fd, pid = mars(
+            verb,
             mars_executable=self.mars_executable,
             request=request,
             uid=uid,
