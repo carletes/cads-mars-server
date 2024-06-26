@@ -69,6 +69,13 @@ def tidy(data):
 
 
 def mars(*, mars_executable, request, uid, logdir, environ):
+    if isinstance(request, dict):
+        requests = [request]
+    else:
+        requests = request
+
+    assert isinstance(requests, list)
+
     data_pipe_r, data_pipe_w = os.pipe()
     request_pipe_r, request_pipe_w = os.pipe()
 
@@ -80,12 +87,6 @@ def mars(*, mars_executable, request, uid, logdir, environ):
     pid = os.fork()
 
     if pid:
-        if isinstance(request, dict):
-            requests = [request]
-        else:
-            requests = request
-
-        assert isinstance(requests, list)
 
         def out(text):
             text = text.encode()
